@@ -1,5 +1,9 @@
 # Diamond Price Prediction & Market Segmentation App
 
+## app deployed using streamlit
+
+[Diamond Price Prediction & Market Segmentation App](https://diamond-dynamics-price-prediction-and-market-segmentation-01.streamlit.app/)
+
 ## Overview
 This project is a Machine Learning-based web application that predicts diamond prices and segments diamonds into different market categories. It uses regression for price prediction and KMeans clustering for market segmentation, all wrapped inside an interactive web app built with Streamlit.
 
