@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 import pickle
 
 # --- Page Configuration ---
@@ -25,12 +26,14 @@ cut_map = models['cut_map']
 color_map = models['color_map']
 clarity_map = models['clarity_map']
 cluster_names = models['cluster_names']
-feature_order = models['feature_order']
+# feature_order now strictly contains only the features that survived RFE selection
+feature_order = models['feature_order'] 
 
 # --- UI Design: Sidebar for Inputs ---
 st.sidebar.header("Diamond Specifications")
 
-# Inputs matching the strict 9 physical factors
+# We collect all 9 possible inputs to maintain a comprehensive UI.
+# If RFE dropped some (like x, y, z), they will be safely ignored during the prediction phase.
 carat = st.sidebar.number_input("Carat", min_value=0.1, max_value=10.0, value=0.50, step=0.01)
 cut = st.sidebar.selectbox("Cut", options=list(cut_map.keys()))
 color = st.sidebar.selectbox("Color", options=list(color_map.keys()))
@@ -46,7 +49,7 @@ st.title("💎 Diamond Dynamics: Pricing & Segmentation")
 st.markdown("Predict the market value and segment of a diamond based on its physical attributes.")
 
 if st.sidebar.button("Predict"):
-    # 1. Map categorical inputs to their encoded numerical values
+    # 1. Map all inputs into a dictionary, encoding the categorical variables immediately
     input_data = {
         'carat': carat,
         'cut_encoded': cut_map[cut],
@@ -59,14 +62,20 @@ if st.sidebar.button("Predict"):
         'z': z
     }
     
-    # 2. Build DataFrame enforcing the exact 9-feature order from training
+    # 2. Build the DataFrame and dynamically filter columns
+    # Passing [feature_order] forces pandas to keep only the columns the model expects,
+    # safely discarding the rest to prevent dimension errors.
     input_df = pd.DataFrame([input_data])[feature_order]
     
-    # 3. Apply the exact scaler used during training
+    # 3. Apply standard scaling
     input_scaled = scaler.transform(input_df)
     
     # 4. Generate Predictions
-    predicted_price_inr = reg_model.predict(input_scaled)[0]
+    # The regression target was log-transformed during training to handle skewness.
+    # We must reverse this using np.expm1() to output actual INR.
+    predicted_price_log = reg_model.predict(input_scaled)[0]
+    predicted_price_inr = np.expm1(predicted_price_log)
+    
     predicted_cluster = cluster_model.predict(input_scaled)[0]
     segment_name = cluster_names.get(predicted_cluster, "Unknown Segment")
     
