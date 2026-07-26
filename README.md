@@ -17,16 +17,13 @@ This project is a Machine Learning-based web application that predicts diamond p
 - Matplotlib / Seaborn  
 
 ## Project Structure
-project-folder/
+Diamond Dynamics Project/
 │
 ├── app.py                  # Streamlit application  
-├── model.py                # Model training / logic (if applicable)  
 ├── requirements.txt        # Dependencies  
 ├── README.md               # Documentation  
-├── data/  
-│   └── diamonds.csv        # Dataset (optional / external)  
-└── models/  
-    └── model.pkl           # Saved model (if used)  
+│── diamonds.csv            # Dataset
+|── model.pkl               # Saved model
 
 ## Installation & Setup (Run Locally)
 
