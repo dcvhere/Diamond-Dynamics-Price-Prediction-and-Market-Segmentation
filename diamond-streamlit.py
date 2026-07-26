@@ -6,7 +6,7 @@ import pickle
 # --- Page Configuration ---
 st.set_page_config(page_title="Diamond Dynamics", page_icon="💎", layout="wide")
 
-# --- Load Models & Preprocessors ---
+# --- Load Models & Preprocessors safely ---
 @st.cache_resource
 def load_models():
     with open('diamond_models.pkl', 'rb') as f:
@@ -25,9 +25,9 @@ scaler = models['scaler']
 cut_map = models['cut_map']
 color_map = models['color_map']
 clarity_map = models['clarity_map']
-cluster_names = models['cluster_names']
 
-# This list contains ONLY the features selected by RFE during training
+# These dynamic variables ensure the app matches the exact outputs from RFECV and the Elbow Method
+cluster_names = models['cluster_names']
 feature_order = models['feature_order'] 
 
 # --- UI Design: Dynamic Sidebar ---
@@ -36,7 +36,7 @@ st.sidebar.markdown("*Inputs dynamically adapted based on optimal training featu
 
 input_data = {}
 
-# Dynamically render ONLY the inputs that the model requires
+# The UI will ONLY render inputs for the features present in the loaded model
 if 'carat' in feature_order:
     input_data['carat'] = st.sidebar.number_input("Carat", min_value=0.1, max_value=10.0, value=1.00, step=0.01)
 
@@ -53,11 +53,10 @@ if 'clarity_encoded' in feature_order:
     input_data['clarity_encoded'] = clarity_map[clarity]
 
 if 'depth' in feature_order:
-    # Capped at realistic limits to prevent K-Means distance hijacking
-    input_data['depth'] = st.sidebar.number_input("Depth %", min_value=40.0, max_value=75.0, value=61.50, step=0.1)
+    input_data['depth'] = st.sidebar.number_input("Depth %", min_value=40.0, max_value=85.0, value=61.50, step=0.1)
 
 if 'table' in feature_order:
-    input_data['table'] = st.sidebar.number_input("Table", min_value=40.0, max_value=75.0, value=57.00, step=0.1)
+    input_data['table'] = st.sidebar.number_input("Table", min_value=40.0, max_value=95.0, value=57.00, step=0.1)
 
 if 'x' in feature_order:
     input_data['x'] = st.sidebar.number_input("Length (x) in mm", min_value=0.1, max_value=15.0, value=6.00, step=0.01)
@@ -72,21 +71,23 @@ if 'z' in feature_order:
 st.title("💎 Diamond Dynamics: Pricing & Segmentation")
 st.markdown("Predict the market value and segment of a diamond based on its physical attributes.")
 
-# Debugging expander to verify active features
-with st.expander("View Active Model Features (Debugging)"):
-    st.write(f"The model is currently utilizing these {len(feature_order)} optimized features for prediction:")
+# Debugging expander to verify backend synchronization
+with st.expander("View Active Model Configuration (Debugging)"):
+    st.write(f"The model is currently utilizing these {len(feature_order)} optimized features:")
     st.code(feature_order)
+    st.write(f"Detected {len(cluster_names)} market segments:")
+    st.json(cluster_names)
 
 if st.sidebar.button("Predict"):
     # 1. Build DataFrame enforcing the exact structure from training
     input_df = pd.DataFrame([input_data])[feature_order]
     
-    # 2. Apply the scaler
+    # 2. Apply the universal scaler directly to the dynamic inputs
     input_scaled = scaler.transform(input_df)
     
     # 3. Generate Predictions
     predicted_price_log = reg_model.predict(input_scaled)[0]
-    predicted_price_inr = np.expm1(predicted_price_log) # Reverse the log transformation
+    predicted_price_inr = np.expm1(predicted_price_log) # Reverse log transformation
     
     predicted_cluster = cluster_model.predict(input_scaled)[0]
     segment_name = cluster_names.get(predicted_cluster, "Unknown Segment")
